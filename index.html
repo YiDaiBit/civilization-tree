@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文明进化树</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #10110f;
+    --panel: #1b1c19;
+    --line: rgba(243, 236, 220, .09);
+    --text: #f4f0e8;
+    --soft: #c9c3b8;
+    --muted: #9c978e;
+    --amber: #e7b56a;
+    --ink: #1c160e;
+    --side: 400px;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif; overflow: hidden; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: var(--amber); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  #side {
+    position: fixed; left: 0; top: 0; bottom: 0; width: var(--side); z-index: 4;
+    background: var(--panel); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+  }
+  .side-head { padding: 12px 16px 4px; }
+  .kicker { margin: 0 0 2px; color: var(--amber); font-size: 11px; letter-spacing: .18em; }
+  h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  .note { margin: 6px 0 0; color: var(--soft); font-size: 12px; line-height: 1.5; }
+  #q {
+    width: 100%; height: 32px; margin-top: 8px; padding: 0 10px;
+    border-radius: 8px; border: 1px solid var(--line); background: #141512; color: var(--text); outline: none;
+  }
+  #q:focus { border-color: rgba(231, 181, 106, .55); }
+  #kinds, #legend { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0 4px; padding: 4px 10px 6px; }
+  #legend {
+    flex: none; max-height: 168px; overflow: auto;
+    border-bottom: 1px solid var(--line);
+  }
+  #kinds { padding-bottom: 0; }
+  #kinds button, #legend button {
+    display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px;
+    border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 12px;
+  }
+  #kinds button.on, #legend button.on, #kinds button:hover, #legend button:hover { background: rgba(255,255,255,.05); color: var(--text); }
+  #kinds button.on, #legend button.on { color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); border-radius: 0; }
+  #legend i { width: 7px; height: 7px; border-radius: 50%; display: block; flex: none; }
+  #legend .grp { flex: 1 0 100%; margin: 6px 2px 0; color: var(--muted); font-size: 10px; letter-spacing: .16em; line-height: 1.2; }
+  #kinds i, .glyphs i, .card b i {
+    width: 8px; height: 8px; display: block; flex: none;
+  }
+  #list i { width: 8px; height: 8px; margin-top: 6px; display: block; flex: none; }
+  i.cog { border-radius: 50%; background: currentColor; }
+  i.inv { border-radius: 1px; background: currentColor; }
+  i.root { width: 7px; height: 7px; border-radius: 1px; transform: rotate(45deg); }
+  #count { margin: 8px 16px 4px; color: var(--muted); font-size: 12px; font-family: var(--mono); }
+  #list { flex: 1; overflow: auto; padding: 0 8px 8px; min-height: 0; }
+  #list button {
+    display: flex; align-items: flex-start; gap: 8px; width: 100%; margin: 0; padding: 8px;
+    border: 0; border-radius: 8px; background: transparent; text-align: left;
+  }
+  #list button.on, #list button:hover { background: rgba(255,255,255,.04); }
+  #list button.on { box-shadow: inset 3px 0 0 var(--amber); }
+  #list .text { min-width: 0; flex: 1; }
+  #list b { display: block; font-size: 14px; font-weight: 600; line-height: 1.35; }
+  #list .blurb {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+    margin-top: 2px; color: var(--soft); font-size: 12px; font-weight: 400; line-height: 1.45;
+  }
+  #list .meta { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+  #list mark { background: rgba(231, 181, 106, .28); color: #f6e6c8; border-radius: 2px; }
+  #list .empty { color: var(--muted); font-size: 13px; padding: 8px; }
+  #list .tag {
+    display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 999px;
+    background: rgba(231, 181, 106, .14); color: var(--amber); font-size: 10px; font-weight: 600; vertical-align: 1px;
+  }
+  .side-foot {
+    flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px;
+  }
+  .glyphs { display: flex; align-items: center; gap: 6px; color: var(--soft); }
+  .glyphs i.cog { color: var(--amber); }
+  .glyphs i.inv, .glyphs i.root { background: var(--amber); }
+  .card b i.cog { color: var(--amber); }
+  .card b i.inv, .card b i.root { background: var(--amber); }
+  canvas { position: fixed; left: var(--side); top: 0; width: calc(100% - var(--side)); height: 100%; display: block; cursor: grab; touch-action: none; }
+  canvas.drag { cursor: grabbing; }
+  #tools { position: fixed; right: 16px; bottom: 16px; display: flex; gap: 8px; z-index: 3; }
+  #tools button {
+    height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
+    background: rgba(16, 17, 15, .86); color: var(--soft); backdrop-filter: blur(12px);
+  }
+  #tools button:hover { color: var(--text); border-color: rgba(231, 181, 106, .45); }
+  #home { background: var(--amber); color: var(--ink); border-color: transparent; font-weight: 600; }
+  #home:hover { color: var(--ink); }
+  .card {
+    position: fixed; z-index: 5; display: none; width: 320px; max-height: min(84vh, 720px); overflow: auto;
+    padding: 12px 14px 14px; border-radius: 16px; background: var(--panel);
+    border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0,0,0,.35);
+  }
+  .card .star { display: block; width: 100%; height: auto; margin-top: 8px; }
+  .card .star-cap { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+  .card b { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 650; }
+  .card .domain { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; font-family: var(--mono); }
+  .card .blurb { display: block; margin-top: 8px; color: var(--soft); font-size: 13px; line-height: 1.6; }
+  .card .rel { margin: 10px 0 4px; color: var(--muted); font-size: 11px; letter-spacing: .08em; }
+  .card .jumps { display: flex; flex-wrap: wrap; gap: 6px; }
+  .card .jump {
+    height: 26px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line);
+    background: transparent; color: var(--soft); font-size: 12px;
+  }
+  .card .jump:hover { border-color: rgba(231, 181, 106, .5); color: var(--text); }
+  .card .src { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+  #err { position: fixed; left: calc(var(--side) + 16px); top: 12px; z-index: 6; color: #e58b7b; white-space: pre-wrap; }
+  @media (max-width: 720px) {
+    #side { --side: 100%; width: 100%; height: 46%; border-right: 0; border-bottom: 1px solid var(--line); }
+    #legend { max-height: 96px; }
+    canvas { left: 0; top: 46%; width: 100%; height: 54%; }
+    #err { left: 12px; top: auto; bottom: 56px; }
+  }
+</style>
+</head>
+<body>
+<aside id="side">
+  <div class="side-head">
+    <p class="kicker">来源</p>
+    <h1>文明进化树</h1>
+    <p class="note">圆是认知，记一条命题。方是发明，记可以施行的做法。一项只归一个学科。来源合计 100%。</p>
+    <input id="q" type="search" placeholder="搜索名称或学科" autocomplete="off">
+  </div>
+  <nav id="legend"></nav>
+  <div id="count"></div>
+  <div id="list"></div>
+  <div class="side-foot">
+    <span class="glyphs"><i class="cog"></i>认知<i class="inv"></i>发明</span>
+    <span>越大，回溯到的叶子贡献越多</span>
+  </div>
+</aside>
+<canvas id="c"></canvas>
+<div id="tools">
+  <button id="regrow" type="button">再聚一次</button>
+  <button id="home" type="button">全图</button>
+</div>
+<div class="card" id="card"></div>
+<script src="grow.js"></script>
+<script src="stars.js"></script>
+<script>
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const grown = CIV.grow(CIV.NODES);
+const nodes = grown.nodes;
+const byId = grown.byId;
+const links = grown.links;
+CIV.scatter(nodes);
+let alpha = 1;
+let cooled = false;
+const laneColor = Object.fromEntries(CIV.LANES.map((l) => [l[0], l[2]]));
+const laneName = Object.fromEntries(CIV.LANES.map((l) => [l[0], l[1]]));
+const maxContrib = Math.max(1, ...nodes.map((n) => n.contrib || 0));
+const sourcesOf = new Map(nodes.map((n) => [n.id, []]));
+const grownOf = new Map(nodes.map((n) => [n.id, []]));
+for (const link of links) {
+  const from = byId.get(link.from), to = byId.get(link.to);
+  sourcesOf.get(link.to).push({ node: from, text: link.pct + "%", value: link.pct });
+  grownOf.get(link.from).push({ node: to, text: amount(link.credit), value: link.credit });
+}
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+const card = document.getElementById("card");
+const STEP_MS = 16;
+const view = { x: 0, y: 0, k: 1 };
+let fitK = 1;
+let t0 = performance.now();
+let userMoved = false;
+let query = "";
+let lane = "";
+let hover = null;
+let selected = null;
+let drag = null;
+let raf = 0;
+
+function wx(n) { return n.x + (n.dx || 0); }
+function wy(n) { return n.y + (n.dy || 0); }
+function age(n) { return performance.now() - t0 - n.order * STEP_MS; }
+function shown(n) { return reduced || age(n) > 0; }
+function appear(n) { return reduced ? 1 : Math.max(0, Math.min(1, age(n) / 200)); }
+function growing() { return nodes.some((n) => appear(n) < 1); }
+function amount(n) {
+  const x = Math.round((n || 0) * 10) / 10;
+  return Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1);
+}
+function scoreText(n) {
+  return "叶子 " + (n.leaves || 0) + " · 贡献 " + amount(n.contrib);
+}
+function colorOf(n) { return n.kind === "根" ? "#E7B56A" : (laneColor[n.lane] || "#E7B56A"); }
+function focusNode() { return (drag && drag.mode === "node" && drag.node) || hover || selected; }
+
+function around(n) {
+  const set = new Set([n.id]);
+  for (const item of sourcesOf.get(n.id) || []) set.add(item.node.id);
+  for (const item of grownOf.get(n.id) || []) set.add(item.node.id);
+  return set;
+}
+function related(n) { return around(n); }
+function textOf(n) {
+  return (n.name + " " + n.blurb + " " + n.year + " " + (laneName[n.lane] || "") + " " + n.kind).toLowerCase();
+}
+function passes(n) {
+  if (lane && n.lane !== lane) return false;
+  if (query && textOf(n).indexOf(query) < 0) return false;
+  return true;
+}
+function bright(n) {
+  if (!shown(n)) return false;
+  const focus = focusNode();
+  if (focus) return related(focus).has(n.id);
+  return passes(n);
+}
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(canvas.clientWidth * dpr);
+  canvas.height = Math.floor(canvas.clientHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (!userMoved) fit(nodes.filter(shown));
+  else draw();
+}
+function bounds(list) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of list) {
+    minX = Math.min(minX, wx(n)); minY = Math.min(minY, wy(n));
+    maxX = Math.max(maxX, wx(n)); maxY = Math.max(maxY, wy(n));
+  }
+  if (!list.length) return { minX: -100, minY: -100, maxX: 100, maxY: 100 };
+  return { minX, minY, maxX, maxY };
+}
+function viewFor(list, cap) {
+  const b = bounds(list);
+  const w = canvas.clientWidth || 800, h = canvas.clientHeight || 600;
+  const bw = Math.max(80, b.maxX - b.minX), bh = Math.max(80, b.maxY - b.minY);
+  const pad = Math.min(w, h) * 0.12;
+  let k = Math.min((w - pad) / bw, (h - pad) / bh);
+  if (cap) k = Math.min(k, cap);
+  return { k, x: w / 2 - ((b.minX + b.maxX) / 2) * k, y: h / 2 - ((b.minY + b.maxY) / 2) * k };
+}
+function fit(list) {
+  const next = viewFor(list && list.length ? list : nodes, 0);
+  fitK = viewFor(nodes, 0).k;
+  view.x = next.x; view.y = next.y; view.k = next.k;
+  draw();
+}
+function easeFit(list) {
+  const next = viewFor(list, 1.6);
+  fitK = viewFor(nodes, 0).k;
+  view.x += (next.x - view.x) * 0.1;
+  view.y += (next.y - view.y) * 0.1;
+  view.k += (next.k - view.k) * 0.1;
+}
+function frame(n) {
+  const origin = { x: wx(n), y: wy(n) };
+  const near = [n];
+  for (const id of around(n)) {
+    if (id === n.id) continue;
+    const o = byId.get(id);
+    if (!o) continue;
+    if (Math.hypot(wx(o) - origin.x, wy(o) - origin.y) < 520) near.push(o);
+  }
+  const next = viewFor(near, 1.7);
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const freeRight = window.innerWidth <= 720 ? w - 24 : Math.max(140, w - 320);
+  const cx = freeRight * 0.5;
+  next.x = cx - origin.x * next.k;
+  next.y = h * 0.46 - origin.y * next.k;
+  view.x = next.x; view.y = next.y; view.k = next.k;
+  userMoved = true;
+  draw();
+}
+function nodeR(n, hot, fade) {
+  const t = Math.sqrt((n.contrib || 0) / maxContrib);
+  const px = 2.8 + 10.6 * t + (hot ? 1.6 : 0);
+  return (px / view.k) * (0.45 + 0.55 * (fade == null ? 1 : fade));
+}
+function toWorld(px, py) { return { x: (px - view.x) / view.k, y: (py - view.y) / view.k }; }
+function pick(px, py) {
+  const p = toWorld(px, py);
+  let best = null, bestR = Infinity;
+  for (const n of nodes) {
+    if (!shown(n) || appear(n) < 0.4) continue;
+    const r = nodeR(n, false, 1);
+    const d = Math.hypot(wx(n) - p.x, wy(n) - p.y);
+    if (d <= r + 3 / view.k && r < bestR) { best = n; bestR = r; }
+  }
+  return best;
+}
+function iconPath(n, r) {
+  const x = wx(n), y = wy(n);
+  ctx.beginPath();
+  if (n.kind === "根") {
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r * 0.86, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r * 0.86, y);
+    ctx.closePath();
+  } else if (n.kind === "发明") {
+    const s = r;
+    const rad = Math.min(s * 0.12, 0.85 / view.k);
+    ctx.moveTo(x - s + rad, y - s);
+    ctx.arcTo(x + s, y - s, x + s, y + s, rad);
+    ctx.arcTo(x + s, y + s, x - s, y + s, rad);
+    ctx.arcTo(x - s, y + s, x - s, y - s, rad);
+    ctx.arcTo(x - s, y - s, x + s, y - s, rad);
+    ctx.closePath();
+  } else {
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
+}
+function arrow(a, b, share, hot, dim, fade) {
+  const x1 = wx(a), y1 = wy(a), x2 = wx(b), y2 = wy(b);
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  const r1 = nodeR(a, false, 1);
+  const r2 = nodeR(b, false, 1);
+  const sx = x1 + ux * (r1 + 1.2 / view.k);
+  const sy = y1 + uy * (r1 + 1.2 / view.k);
+  const ex = x2 - ux * (r2 + 2.2 / view.k);
+  const ey = y2 - uy * (r2 + 2.2 / view.k);
+  if ((ex - sx) * ux + (ey - sy) * uy < 6 / view.k) return;
+  const alpha = (hot ? 0.92 : dim ? 0.06 : 0.4) * fade;
+  const focus = focusNode();
+  const color = hot && focus ? tint(colorOf(focus), alpha) : "rgba(201,195,184," + alpha + ")";
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(ex, ey);
+  ctx.lineWidth = ((hot ? 1.15 : 0.55) + 2.4 * share) / view.k;
+  ctx.strokeStyle = color;
+  ctx.stroke();
+  const head = (5 + 4 * share) / view.k;
+  const bx = ex - ux * head, by = ey - uy * head;
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(bx + uy * head * 0.42, by - ux * head * 0.42);
+  ctx.lineTo(bx - uy * head * 0.42, by + ux * head * 0.42);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+function tint(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + alpha + ")";
+}
+
+function draw() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  const focus = focusNode();
+  const focusIds = focus ? related(focus) : null;
+  ctx.save();
+  ctx.translate(view.x, view.y);
+  ctx.scale(view.k, view.k);
+  for (const link of links) {
+    const a = byId.get(link.from), b = byId.get(link.to);
+    if (!shown(a) || !shown(b)) continue;
+    const hot = focusIds && focusIds.has(a.id) && focusIds.has(b.id);
+    const dim = (focusIds && !hot) || (!focusIds && (!passes(a) || !passes(b)));
+    const fade = Math.min(appear(a), appear(b));
+    ctx.beginPath();
+    ctx.setLineDash([]);
+    arrow(a, b, (link.pct || 0) / 100, hot, dim, fade);
+  }
+  ctx.setLineDash([]);
+  const paint = nodes.filter(shown).slice().sort((a, b) => b.contrib - a.contrib);
+  for (const n of paint) {
+    const fade = appear(n);
+    const on = bright(n);
+    const hot = focus && n === focus;
+    const r = nodeR(n, hot, fade);
+    iconPath(n, r);
+    ctx.fillStyle = on ? tint(colorOf(n), fade) : "rgba(156,151,142," + (0.34 * fade) + ")";
+    ctx.fill();
+    if (hot) {
+      ctx.lineWidth = 1.4 / view.k;
+      ctx.strokeStyle = "rgba(244,240,232," + fade + ")";
+      iconPath(n, r);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+  drawLabels(focus, focusIds, w, h);
+  placeCard();
+}
+function drawLabels(focus, focusIds, w, h) {
+  const placed = [];
+  const items = nodes.filter((n) => {
+    if (!shown(n) || appear(n) < 0.7) return false;
+    if (focusIds) return focusIds.has(n.id);
+    if (!passes(n)) return false;
+    if (n.contrib >= 3) return true;
+    if (view.k >= fitK * 1.28 && n.contrib >= 1) return true;
+    return view.k >= fitK * 1.75;
+  });
+  items.sort((a, b) => (b === focus) - (a === focus) || (focusIds && focusIds.has(b.id)) - (focusIds && focusIds.has(a.id)) || b.contrib - a.contrib);
+  ctx.save();
+  ctx.font = "600 12px PingFang SC, Hiragino Sans GB, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const n of items) {
+    const must = focusIds && focusIds.has(n.id);
+    const sx = view.x + wx(n) * view.k;
+    const sy = view.y + wy(n) * view.k;
+    const pad = nodeR(n, false, 1) * view.k + 10;
+    const ox = Math.cos(n.heading || 0) * pad;
+    const oy = Math.sin(n.heading || 0) * pad;
+    let x = sx + (n.id === "root" ? 0 : ox);
+    let y = sy + (n.id === "root" ? -16 : oy);
+    if (must && n === focus) {
+      const limit = window.innerWidth - (window.innerWidth <= 720 ? 24 : 360);
+      if (x > limit - 8) x = sx - Math.abs(ox || 16);
+      x = Math.max(12, Math.min(x, limit));
+      y = Math.max(18, Math.min(y, h - 18));
+    }
+    if (x < 8 || y < 8 || x > w - 8 || y > h - 8) continue;
+    if (!must && placed.some((p) => Math.hypot(p.x - x, p.y - y) < 46)) continue;
+    placed.push({ x, y });
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(16,17,15,0.85)";
+    ctx.strokeText(n.name, x, y);
+    ctx.fillStyle = must && n === focus ? colorOf(n) : "rgba(244,240,232,0.92)";
+    ctx.fillText(n.name, x, y);
+  }
+  ctx.restore();
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>]/g, (c) => c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;");
+}
+function mark(s) {
+  const raw = String(s);
+  if (!query) return esc(raw);
+  const at = raw.toLowerCase().indexOf(query);
+  if (at < 0) return esc(raw);
+  return esc(raw.slice(0, at)) + "<mark>" + esc(raw.slice(at, at + query.length)) + "</mark>" + esc(raw.slice(at + query.length));
+}
+function paintLegend() {
+  const box = document.getElementById("legend");
+  box.replaceChildren();
+  const all = document.createElement("button");
+  all.type = "button";
+  all.textContent = "全部";
+  if (!lane) all.className = "on";
+  all.addEventListener("click", () => { lane = ""; paintLegend(); paintList(); draw(); });
+  box.append(all);
+  let group = "";
+  for (const [id, name, color, grp] of CIV.LANES) {
+    if (grp && grp !== group) {
+      group = grp;
+      const label = document.createElement("span");
+      label.className = "grp";
+      label.textContent = grp;
+      box.append(label);
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    if (lane === id) {
+      b.className = "on";
+      b.style.color = color;
+      b.style.boxShadow = "inset 0 -2px 0 " + color;
+    }
+    const i = document.createElement("i");
+    i.style.background = color;
+    b.append(i, document.createTextNode(name));
+    b.addEventListener("click", () => { lane = lane === id ? "" : id; paintLegend(); paintList(); draw(); });
+    box.append(b);
+  }
+}
+function paintList() {
+  const rows = nodes.filter(passes);
+  document.getElementById("count").textContent = rows.length + " 项";
+  const list = document.getElementById("list");
+  list.replaceChildren();
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "没有这项";
+    list.append(empty);
+    return;
+  }
+  const laneOrder = Object.fromEntries(CIV.LANES.map((l, i) => [l[0], i]));
+  const ordered = rows.slice().sort((a, b) => (laneOrder[a.lane] - laneOrder[b.lane]) || a.order - b.order);
+  for (const n of ordered) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.id = n.id;
+    const dot = document.createElement("i");
+    dot.className = n.kind === "根" ? "root" : n.kind === "认知" ? "cog" : "inv";
+    dot.style.color = colorOf(n);
+    dot.style.background = colorOf(n);
+    const text = document.createElement("span");
+    text.className = "text";
+    const title = document.createElement("b");
+    title.innerHTML = mark(n.name);
+    const meta = document.createElement("span");
+    meta.className = "meta";
+    meta.textContent = n.year + " · " + (laneName[n.lane] || "") + (n.kind === "根" ? "" : " · " + n.kind);
+    const blurb = document.createElement("span");
+    blurb.className = "blurb";
+    blurb.innerHTML = mark(n.blurb);
+    text.append(title, meta, blurb);
+    button.append(dot, text);
+    button.addEventListener("click", () => { selected = n; hover = null; frame(n); paintList(); syncList(true); });
+    list.append(button);
+  }
+  syncList(false);
+}
+function syncList(scroll) {
+  const id = (selected && selected.id) || "";
+  for (const button of document.querySelectorAll("#list button")) {
+    const on = button.dataset.id === id;
+    button.classList.toggle("on", on);
+    if (on) {
+      const n = byId.get(id);
+      const color = colorOf(n);
+      button.style.boxShadow = "inset 3px 0 0 " + color;
+      button.style.background = tint(color, 0.16);
+    } else {
+      button.style.boxShadow = "";
+      button.style.background = "";
+    }
+    if (on && scroll) button.scrollIntoView({ block: "nearest" });
+  }
+}
+function jump(id) {
+  const n = byId.get(id);
+  if (!n) return;
+  selected = n;
+  hover = null;
+  frame(n);
+  paintList();
+  syncList(true);
+}
+function starNode(n) {
+  const axes = n.kind === "发明" ? CIV.STAR.inv : CIV.STAR.cog;
+  const s = CIV.STAR.score[n.id];
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "star");
+  svg.setAttribute("viewBox", "0 0 320 248");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", n.name + "，" + axes.map((name, i) => name + " " + s[i]).join("，"));
+  const cx = 160, cy = 124, R = 72;
+  const polar = (i, radius) => {
+    const a = -Math.PI / 2 + i * (Math.PI / 3);
+    return [cx + Math.cos(a) * radius, cy + Math.sin(a) * radius];
+  };
+  const pts = (scale) => axes.map((_, i) => {
+    const p = polar(i, R * scale);
+    return p[0].toFixed(1) + "," + p[1].toFixed(1);
+  }).join(" ");
+  const el = (name, attrs) => {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+    for (const key of Object.keys(attrs)) node.setAttribute(key, attrs[key]);
+    return node;
+  };
+  for (const level of [20, 40, 60, 80, 100]) {
+    svg.append(el("polygon", { points: pts(level / 100), fill: "none", stroke: "rgba(243,236,220,.09)", "stroke-width": "1" }));
+  }
+  axes.forEach((_, i) => {
+    const p = polar(i, R);
+    svg.append(el("line", { x1: cx, y1: cy, x2: p[0].toFixed(1), y2: p[1].toFixed(1), stroke: "rgba(243,236,220,.09)", "stroke-width": "1" }));
+  });
+  const hue = colorOf(n);
+  svg.append(el("polygon", {
+    points: axes.map((_, i) => {
+      const p = polar(i, R * s[i] / 100);
+      return p[0].toFixed(1) + "," + p[1].toFixed(1);
+    }).join(" "),
+    fill: tint(hue, 0.28), stroke: hue, "stroke-width": "2", "stroke-linejoin": "round"
+  }));
+  const max = Math.max(...s);
+  axes.forEach((name, i) => {
+    const p = polar(i, R * s[i] / 100);
+    svg.append(el("circle", { cx: p[0].toFixed(1), cy: p[1].toFixed(1), r: "2.6", fill: hue }));
+    const lp = polar(i, R + 30);
+    const anchor = (i === 0 || i === 3) ? "middle" : (i === 1 || i === 2) ? "start" : "end";
+    const text = el("text", {
+      x: lp[0].toFixed(1), y: lp[1].toFixed(1), "text-anchor": anchor, "dominant-baseline": "middle",
+      fill: s[i] === max ? hue : "#c9c3b8", "font-size": "12",
+      "font-family": "PingFang SC, Noto Sans SC, sans-serif"
+    });
+    text.textContent = name + " " + s[i];
+    svg.append(text);
+  });
+  svg.append(el("circle", { cx, cy, r: "22", fill: "#1b1c19", stroke: "rgba(243,236,220,.16)" }));
+  const avg = (Math.round(s.reduce((a, b) => a + b, 0) / 6 * 10) / 10).toFixed(1);
+  const num = el("text", {
+    x: cx, y: cy - 1, "text-anchor": "middle", fill: hue, "font-size": "13", "font-weight": "650",
+    "font-family": "ui-monospace, Menlo, monospace"
+  });
+  num.textContent = avg;
+  const word = el("text", {
+    x: cx, y: cy + 12, "text-anchor": "middle", fill: "#9c978e", "font-size": "9",
+    "font-family": "PingFang SC, Noto Sans SC, sans-serif"
+  });
+  word.textContent = "平均";
+  svg.append(num, word);
+  const note = document.createElement("p");
+  note.className = "star-cap";
+  note.textContent = n.kind === "发明" ? "外圈 100。上方是改命。" : "外圈 100。上方是改观，下方是致用。";
+  const wrap = document.createElement("div");
+  wrap.append(svg, note);
+  return wrap;
+}
+function mainLine(n) {
+  const chain = [n];
+  const seen = new Set([n.id]);
+  let cur = n;
+  while (cur.parent && !seen.has(cur.parent)) {
+    const parent = byId.get(cur.parent);
+    if (!parent) break;
+    seen.add(parent.id);
+    chain.push(parent);
+    cur = parent;
+  }
+  chain.reverse();
+  return chain;
+}
+function addLine(box, nodes) {
+  if (nodes.length < 2) return;
+  const p = document.createElement("div");
+  p.className = "rel";
+  p.textContent = "主线";
+  const jumps = document.createElement("div");
+  jumps.className = "jumps";
+  for (const n of nodes.slice(0, -1)) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "jump";
+    b.textContent = n.name;
+    b.addEventListener("click", () => jump(n.id));
+    jumps.append(b);
+  }
+  box.append(p, jumps);
+}
+function placeCard() {
+  const n = (hover && shown(hover) && hover) || (selected && shown(selected) && selected);
+  if (!n || appear(n) < 0.5) { card.style.display = "none"; card.dataset.id = ""; return; }
+  card.style.display = "block";
+  const narrow = window.innerWidth <= 720;
+  card.style.left = (narrow ? 12 : window.innerWidth - 336) + "px";
+  card.style.top = (narrow ? 12 : 16) + "px";
+  if (card.dataset.id === n.id) return;
+  card.dataset.id = n.id;
+  card.replaceChildren();
+  const title = document.createElement("b");
+  const mark = document.createElement("i");
+  mark.className = n.kind === "根" ? "root" : n.kind === "认知" ? "cog" : "inv";
+  mark.style.color = colorOf(n);
+  mark.style.background = colorOf(n);
+  title.append(mark, document.createTextNode(n.name));
+  const domain = document.createElement("span");
+  domain.className = "domain";
+  domain.textContent = n.year + " · " + (laneName[n.lane] || "") + (n.kind === "根" ? " · 起点" : " · " + n.kind) + " · " + scoreText(n);
+  const blurb = document.createElement("span");
+  blurb.className = "blurb";
+  blurb.textContent = n.blurb;
+  card.append(title, domain, blurb, starNode(n));
+  addLine(card, mainLine(n));
+  const byValue = (a, b) => b.value - a.value || (a.node.name < b.node.name ? -1 : 1);
+  addJumps(card, "来源", (sourcesOf.get(n.id) || []).slice().sort(byValue));
+  addJumps(card, "发展", (grownOf.get(n.id) || []).slice().sort(byValue));
+}
+function addJumps(box, label, list) {
+  if (!list.length) return;
+  const p = document.createElement("div");
+  p.className = "rel";
+  p.textContent = label;
+  const jumps = document.createElement("div");
+  jumps.className = "jumps";
+  for (const n of list) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "jump";
+    b.textContent = n.node.name + " " + n.text;
+    b.addEventListener("click", () => jump(n.node.id));
+    jumps.append(b);
+  }
+  box.append(p, jumps);
+}
+
+function kick() {
+  if (raf) return;
+  const loop = () => {
+    if (!cooled) {
+      for (let i = 0; i < 2; i++) CIV.pull(nodes, links, byId, alpha);
+      alpha *= 0.985;
+      if (alpha < 0.02) cooled = true;
+      if (!userMoved) easeFit(nodes);
+    }
+    draw();
+    if (!cooled || (drag && drag.mode === "node")) raf = requestAnimationFrame(loop);
+    else raf = 0;
+  };
+  raf = requestAnimationFrame(loop);
+}
+function regrow() {
+  CIV.scatter(nodes);
+  alpha = 1;
+  cooled = false;
+  t0 = performance.now() - 1e6;
+  userMoved = false;
+  selected = null;
+  hover = null;
+  card.dataset.id = "";
+  kick();
+}
+function reheat() {
+  if (alpha < 0.45) alpha = 0.45;
+  cooled = false;
+  kick();
+}
+document.getElementById("regrow").addEventListener("click", regrow);
+document.getElementById("home").addEventListener("click", () => {
+  selected = null; hover = null; userMoved = false; card.dataset.id = "";
+  fit(nodes); paintList();
+});
+document.getElementById("q").addEventListener("input", (e) => {
+  query = e.target.value.trim().toLowerCase();
+  paintList();
+  draw();
+});
+window.addEventListener("keydown", (e) => {
+  if (e.key === "/" && document.activeElement !== document.getElementById("q")) {
+    e.preventDefault();
+    document.getElementById("q").focus();
+  }
+  if (e.key === "Escape") {
+    selected = null; hover = null; card.dataset.id = "";
+    paintList(); draw();
+  }
+});
+canvas.addEventListener("pointerdown", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const node = pick(e.clientX - rect.left, e.clientY - rect.top);
+  drag = { x: e.clientX, y: e.clientY, px: e.clientX, py: e.clientY, vx: view.x, vy: view.y, moved: false, node, mode: node ? "node" : "pan",
+    ox: node ? node.x : 0, oy: node ? node.y : 0 };
+  if (node) node.hold = true;
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  canvas.classList.add("drag");
+});
+canvas.addEventListener("pointermove", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  if (drag) {
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 3) drag.moved = true;
+    if (drag.mode === "pan" && drag.moved) {
+      userMoved = true;
+      view.x = drag.vx + e.clientX - drag.x;
+      view.y = drag.vy + e.clientY - drag.y;
+      draw();
+    } else if (drag.mode === "node" && drag.moved) {
+      userMoved = true;
+      const p = toWorld(e.clientX - rect.left, e.clientY - rect.top);
+      const origin = toWorld(drag.x - rect.left, drag.y - rect.top);
+      drag.node.x = drag.ox + p.x - origin.x;
+      drag.node.y = drag.oy + p.y - origin.y;
+      drag.node.vx = 0;
+      drag.node.vy = 0;
+      card.dataset.id = "";
+      reheat();
+    }
+    return;
+  }
+  const next = pick(e.clientX - rect.left, e.clientY - rect.top);
+  if (next !== hover) { hover = next; canvas.style.cursor = hover ? "pointer" : "grab"; draw(); }
+});
+canvas.addEventListener("pointerup", () => {
+  if (drag && drag.node) drag.node.hold = false;
+  if (drag && !drag.moved) {
+    if (drag.node) { selected = drag.node; frame(selected); paintList(); syncList(true); }
+    else if (selected) { selected = null; card.dataset.id = ""; paintList(); draw(); }
+  } else if (drag && drag.moved && drag.mode === "node") reheat();
+  drag = null;
+  canvas.classList.remove("drag");
+});
+canvas.addEventListener("pointerleave", (e) => {
+  if (drag) return;
+  if (e.relatedTarget && card.contains(e.relatedTarget)) return;
+  if (hover) { hover = null; canvas.style.cursor = "grab"; draw(); }
+});
+canvas.addEventListener("dblclick", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const node = pick(e.clientX - rect.left, e.clientY - rect.top);
+  if (!node) {
+    selected = null; hover = null; userMoved = false; card.dataset.id = "";
+    fit(nodes); paintList();
+  }
+});
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  userMoved = true;
+  const rect = canvas.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  const next = Math.min(2.4, Math.max(fitK * 0.6, view.k * (e.deltaY < 0 ? 1.1 : 0.9)));
+  view.x = px - ((px - view.x) / view.k) * next;
+  view.y = py - ((py - view.y) / view.k) * next;
+  view.k = next;
+  draw();
+}, { passive: false });
+card.addEventListener("pointerdown", (e) => e.stopPropagation());
+window.addEventListener("resize", resize);
+window.addEventListener("error", (e) => {
+  const pre = document.createElement("pre");
+  pre.id = "err";
+  pre.textContent = e.message;
+  document.body.append(pre);
+});
+paintLegend();
+paintList();
+t0 = performance.now() - 1e6;
+if (reduced) {
+  let calm = 1;
+  for (let i = 0; i < 600 && calm > 0.02; i++) {
+    CIV.pull(nodes, links, byId, calm);
+    if (i % 2) calm *= 0.985;
+  }
+  cooled = true;
+  userMoved = false;
+  resize();
+} else {
+  resize();
+  kick();
+}
+</script>
+</body>
+</html>
